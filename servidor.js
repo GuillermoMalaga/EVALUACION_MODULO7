@@ -46,8 +46,8 @@ app.post('/usuario',async (req,res)=>{
     console.log(req.body);
     let nombre=req.body.nombre;
     let balance=req.body.balance;
-    console.log("el nuevo usuario es:"+nombre);
-    console.log("el nuevo balance es:"+balance);
+    //console.log("el nuevo usuario es:"+nombre);
+    //console.log("el nuevo balance es:"+balance);
     //query para buscar el id maximo
     const queryIDUsuario='SELECT COALESCE(MAX("id"),0)+1 AS "id" FROM "usuarios"'
     
@@ -79,13 +79,14 @@ app.post('/usuario',async (req,res)=>{
 });
 //trcibe los datos modificados de un usuario y los actualiza
 app.put('/usuario',(req,res)=>{
-    res.send("HOla mundo");
+    //aqui viene el codigo para actualizar los usuarios
 });
 //Recibe el id de un usuario rregistradio y lo elimina
-app.delete('/usuario',async (req,res)=>{
+app.use(bodyParser.urlencoded({extended: false}));
+app.delete("/usuario/:id",async (req,res)=>{
     const consulta='DELETE FROM "usuarios" WHERE "id"=$1';
     try {
-        console.log("El id del usuario a borroa es el:"+req.params);
+        console.log("El id del usuario a borroa es el:"+req.params.id);
         await pool.query(consulta,[req.params.id]);
         res.json({status:"OK"});
     } catch (error) {
@@ -102,8 +103,20 @@ app.post('/tranferencia',(req,res)=>{
 //devuelve todas las transferencias almacenadas
 //en la base de datos
 //en formato de un arreglo
-app.get('/transferencias',(req,res)=>{
-    res.send("Estas son todas las tranferencias");
+app.get('/transferencias',async (req,res)=>{
+    const consulta='SELECT * FROM "transferencias"'
+    let resultado;
+    try{
+        resultado= await pool.query(consulta);
+        console.log(resultado.rows);
+        let response=resultado.rows;
+        console.log(response);
+        res.send(JSON.stringify(response));
+    }catch(err){
+        console.log(`Error al ejecutar consulta: ${err.message}`);//"Error al ejecutar consulta:" +err.message
+        res.status(500);
+        res.end('error al buscar datos');
+    }
 });
 
 //ejecutamos el servidor
