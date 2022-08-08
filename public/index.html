@@ -93,6 +93,7 @@
             <th>Monto</th>
           </thead>
           <tbody class="transferencias">
+<!--             
             <tr>
               <td>25/01/2021 10:00</td>
               <td>Luis Vallejo</td>
@@ -117,7 +118,7 @@
               <td>Pedro Rivas</td>
               <td>Luis Vallejo</td>
               <td>10.000</td>
-            </tr>
+            </tr> -->
           </tbody>
         </table>
       </div>
@@ -213,6 +214,9 @@
       let emisor = $("form:last select:first").val();
       let receptor = $("form:last select:last").val();
       let monto = $("#monto").val();
+      console.log("receptor:"+receptor);
+      console.log("emisor:"+emisor);
+      console.log("monto:"+monto);
       if (!monto || !emisor || !receptor) {
         alert("Debe seleccionar un emisor, receptor y monto a transferir");
         return false;
@@ -220,6 +224,7 @@
       try {
         const response = await fetch("http://localhost:3000/transferencia", {
           method: "post",
+          headers:{"Content-Type":"application/json"},
           body: JSON.stringify({
             emisor,
             receptor,
@@ -227,6 +232,12 @@
           }),
         });
         const data = await response.json();
+        console.log("--------------------------------------");
+        console.table(data.respuesta);
+        if(data.respuesta.includes("Error")){
+          alert(data.respuesta);
+        }
+        console.log("--------------------------------------");
         location.reload();
       } catch (e) {
         console.log(e);
@@ -257,8 +268,8 @@
               </tr>
          `);
 
-        $("#emisor").append(`<option value="${c.nombre}">${c.nombre}</option>`);
-        $("#receptor").append(`<option value="${c.nombre}">${c.nombre}</option>`);
+        $("#emisor").append(`<option value="${c.id}">${c.nombre}</option>`);
+        $("#receptor").append(`<option value="${c.id}">${c.nombre}</option>`);
       });
     };
 
@@ -272,14 +283,15 @@
     const getTransferencias = async () => {
       const { data } = await axios.get("http://localhost:3000/transferencias");
       $(".transferencias").html("");
-
+      //console.log(data);
       data.forEach((t) => {
+        console.log(t);
         $(".transferencias").append(`
        <tr>
-         <td> ${formatDate(t[4])} </td>
-         <td> ${t[1]} </td>
-         <td> ${t[2]} </td>
-         <td> ${t[3]} </td>
+         <td> ${formatDate(t.fecha)} </td>
+         <td> ${t.nombreEmisor} </td>
+         <td> ${t.nombreReceptor} </td>
+         <td> ${t.monto} </td>
        </tr>
      `);
       });

@@ -30,9 +30,9 @@ app.get('/usuarios',async (req,res)=>{
     let resultado;
     try{
         resultado= await pool.query(consulta);
-        console.log(resultado.rows);
+        //console.log(resultado.rows);
         let response=resultado.rows;
-        console.log(response);
+        //console.log(response);
         res.send(JSON.stringify(response));
     }catch(err){
         console.log(`Error al ejecutar consulta: ${err.message}`);//"Error al ejecutar consulta:" +err.message
@@ -43,7 +43,7 @@ app.get('/usuarios',async (req,res)=>{
 //Reciibe los datos de un nuevo usuario y los almacena en postgress
 
 app.post('/usuario',async (req,res)=>{
-    console.log(req.body);
+    //console.log(req.body);
     let nombre=req.body.nombre;
     let balance=req.body.balance;
     //console.log("el nuevo usuario es:"+nombre);
@@ -55,7 +55,7 @@ app.post('/usuario',async (req,res)=>{
     const respuestaIdUsuario=await pool.query(queryIDUsuario);
     
     //verificacion de datos
-    console.log(respuestaIdUsuario.rows[0].id);
+    //console.log(respuestaIdUsuario.rows[0].id);
     
     //console.log(req.body);
     //query para insertar datos
@@ -97,14 +97,56 @@ app.delete("/usuario/:id",async (req,res)=>{
     }
 });
 //recibe los datos para realizar una transaccion 
-app.post('/tranferencia',(req,res)=>{
-    res.send("Se Ha solicitado una transferencia");
+//app.use(bodyParser.urlencoded({extended: false}));
+app.post('/transferencia',async (req,res)=>{
+    const consulta='SELECT * FROM "usuarios" WHERE "id"=$1';
+    const updateNuevoBalance='UPDATE public.usuarios SET balance=$1 WHERE id=$2;'
+    const updateNuevoBalanceReceptor='UPDATE public.usuarios SET balance=balance + $1 WHERE id=$2;';
+    const ultimoId='select max(id) from public.transferencias;';
+    const insertTransferencia='INSERT INTO public.transferencias(id, emisor, receptor, monto, fecha) VALUES ($1, $2, $3, $4, $5);'
+    let resultadoEmisor;
+    //res.send("Se Ha solicitado una transferencia");
+    console.log("Este es el req que envia el formulñario transferencia : "+req.body.emisor);
+    try {
+        resultadoEmisor=await pool.query(consulta,[req.body.emisor]);
+        console.log("----------------------------------------------------------------------");
+        console.log(resultadoEmisor.rows);
+        let response=resultadoEmisor.rows;
+        console.log("El Banace solicitado es  : "+response[0].balance);
+        if(parseInt(req.body.monto) > parseInt(response[0].balance)){
+            res.json({respuesta :"Error: El momto a transferir es mayor al saldo en caja"});
+        }else{
+            //res.json({status:"OK",body:"Esta respuesta esta e el body"});
+            res.json({respuesta :"El monto solicitado esta correcto"});
+            let nuevoSaldo=parseInt(response[0].balance)-parseInt(req.body.monto);
+            try {
+                //descuento al saldo del emisor en la transferencia
+                resultadoUpdateUsuario=await pool.query(updateNuevoBalance,[nuevoSaldo,req.body.emisor]);
+                console.log("La actualicion del saldo del usuario emisor termino con exito");
+                //se el suma al recepor el valor del monto de la transferencia
+                resultadoUpdateUsuario=await pool.query(updateNuevoBalanceReceptor,[parseInt(req.body.monto),req.body.receptor]);
+                console.log("La actualicion del saldo del usuario receptor termino con exito");
+                //se inserta la transferencia a la tabla de transferencias
+                ultimoIdint=await pool.query(ultimoId);
+                console.log("El ultimo Id es:"+ultimoIdint.rows[0].max);
+                insertarTransferenciaInt=await pool.query(insertTransferencia,[parseInt(ultimoIdint.rows[0].max)+1,req.body.emisor,req.body.receptor,req.body.monto,new Date(Date.now())]);
+                console.log("Se inserto la nueva transfrenecia con exito");
+            } catch (error) {
+                console.log(`Error al ejecutar actualizacion de saldo: ${error.message}`);
+            }
+
+        }        
+    } catch (error) {
+        console.log(`Error al ejecutar consulta de busqueda de Emisor: ${error.message}`);
+        //res.status(500);
+        //res.end('error al buscar datos');
+    }
 });
 //devuelve todas las transferencias almacenadas
 //en la base de datos
 //en formato de un arreglo
 app.get('/transferencias',async (req,res)=>{
-    const consulta='SELECT * FROM "transferencias"'
+    const consulta='SELECT t.id,t.emisor,u1.nombre AS "nombreEmisor",t.receptor,u2.nombre AS "nombreReceptor",t.monto,t.fecha FROM transferencias t JOIN usuarios u1 ON u1.id=t.emisor JOIN usuarios u2 ON u2.id=t.receptor'
     let resultado;
     try{
         resultado= await pool.query(consulta);
